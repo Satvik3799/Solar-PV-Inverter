@@ -1,0 +1,338 @@
+These following codes are written in Atollic true studio for STM32. These are demo codes written for proper understanding of its library functions.
+
+\section{Code for controlling switching of on/off for path P1 and P2}
+\begin{lstlisting}[language=C++]
+
+#include "stm32f4xx.h"                           /* Include STM Inbuilt Library*/
+#include "stm32f4_discovery.h"
+
+GPIO_InitTypeDef GPIO_C1;                        /* Initaializing the function */
+
+int main(void)                                  /* Starting The main function */
+{
+
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);        /* Initializing the clock for portA and enabling it */
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);        /* Initializing the clock for portD and enabling it */
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE, ENABLE);       /* Initializing the clock for portE and enabling it */
+
+  GPIO_C1.GPIO_Pin = GPIO_Pin_5;                         /* Initializing the Pin PA5 */
+  GPIO_C1.GPIO_OType = GPIO_OType_PP;                    /* Initializing the Pin to work in push pull mode */
+  GPIO_C1.GPIO_Mode = GPIO_Mode_IN;                      /* Initializing the Pin PA5 to work in Input Mode */
+  GPIO_C1.GPIO_PuPd = GPIO_PuPd_NOPULL;                  /* Initializing the Pin PA5 to work as No pull means no low or high */
+  GPIO_C1.GPIO_Speed = GPIO_Speed_50MHz;                /* Initializing the spped of clock pulse */
+  GPIO_Init(GPIOA, &GPIO_C1);                           /* Calling the function Init by passing two values*/
+
+
+  GPIO_C1.GPIO_Pin = GPIO_Pin_12;                      /* Initializing the Pin PD12 */
+  GPIO_C1.GPIO_Pin = GPIO_Pin_13;                      /* Initializing the Pin PD13 */
+  GPIO_C1.GPIO_OType = GPIO_OType_PP;                  /* Initializing the Pin PD12, PD13 to work in Push Pull Mode */
+  GPIO_C1.GPIO_Mode = GPIO_Mode_OUT;                  /* Initializing the Pin PD12, PD13 to work in output mode */
+  GPIO_C1.GPIO_PuPd = GPIO_PuPd_NOPULL;               /* Initializing the Pin PD12, PD13 to work as no pull mode */
+  GPIO_C1.GPIO_Speed = GPIO_Speed_50MHz;             /* Initializing the spped of clock pulse */
+  GPIO_Init(GPIOD, &GPIO_C1);                        /* Calling the function Init by passing two values*/
+
+
+  GPIO_C1.GPIO_Pin = GPIO_Pin_11;                     /* Initializing the Pin PE11 */
+  GPIO_C1.GPIO_Pin = GPIO_Pin_13;                      /* Initializing the Pin PE13 */
+  GPIO_C1.GPIO_OType = GPIO_OType_PP;                   /* Initializing the Pin PE1, PE13 to work in push pull mode */
+  GPIO_C1.GPIO_Mode = GPIO_Mode_OUT;                    /* Initializing the Pin PE11, PE13 to work in output mode */
+  GPIO_C1.GPIO_PuPd = GPIO_PuPd_NOPULL;                  /* Initializing the Pin PE11, PE13 to work as no pull mode */
+  GPIO_C1.GPIO_Speed = GPIO_Speed_50MHz;              /* Initializing the Speed of clock pulse */
+  GPIO_Init(GPIOE, &GPIO_C1);                        /* Calling the function Init by passing two values*/
+
+  while (1)
+  {
+	if(GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_5) == Bit_SET)        /* Checking if Input is High or not */
+	{
+		GPIO_WriteBit(GPIOD, GPIO_Pin_12, Bit_SET);             /* Making pin PD12 set high */
+		GPIO_WriteBit(GPIOE, GPIO_Pin_11, Bit_SET);             /* Making pin PE11 set high */
+	}
+	else
+	{
+		GPIO_WriteBit(GPIOD, GPIO_Pin_13, Bit_SET);             /* Making Pin PD13 set high */
+		GPIO_WriteBit(GPIOE, GPIO_Pin_11, Bit_RESET);           /* Making Pin PE11 set low */
+		GPIO_WriteBit(GPIOE, GPIO_Pin_13, Bit_SET);             /* Making Pin PE13 set high */
+	}
+  }
+}
+
+
+\end{lstlisting}
+
+\section{Code for MPPT}
+\begin{lstlisting}[language=C++]
+#include "stm32f4xx.h"
+#include "stm32f4_discovery.h"
+
+GPIO_InitTypeDef  GPIO_RefGen;           /* Defining the function*/
+
+int Vrefmax = 363;                       /* Assuming the Vref maximun value*/
+int Vrefmin = 0;                         /* Assuming the Vref minimum value*/
+int Vrefinit = 300;                      /* Assuming Vrefinit value as 300 coz at here MPP occurs*/
+int deltaVref = 1;                       /* Taking a constant value*/
+
+double Vold = 0;double Pold = 0;       /*declaring values and variables*/
+double Vrefold = 300;double V;
+double P;double I;
+double dV;double dP;double Vref;
+
+int main(void)                         /*Starting the main function*/
+{
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);    /*initializing the clock pulses*/
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+	
+	GPIO_RefGen.GPIO_Pin = GPIO_Pin_5;                    /*Initializing the pin*/
+	GPIO_RefGen.GPIO_OType = GPIO_OType_PP;
+	GPIO_RefGen.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_RefGen.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_RefGen.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOA, &GPIO_RefGen);
+	
+	
+	GPIO_RefGen.GPIO_Pin = GPIO_Pin_12;
+	GPIO_RefGen.GPIO_OType = GPIO_OType_PP;
+	GPIO_RefGen.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_RefGen.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_RefGen.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOD, &GPIO_RefGen);
+    
+
+
+  while (1)
+  {
+	V = GPIO_ReadInputData(GPIOA);
+	I = GPIO_ReadInputData(GPIOD);
+	P = V*I;
+	dV = V - Vold;
+	dP = P - Pold;
+	
+	if (dP == 0)
+	{
+		Vref = Vrefold;
+	}
+	
+	if (dP < 0)
+	{
+		if (dV < 0)
+		{
+			Vref = Vrefold + deltaVref;
+		}
+		else
+		{
+			Vref = Vrefold - deltaVref;
+		}
+		
+	}
+	
+	if (dP > 0)
+	{
+		if (dV < 0)
+		{
+			Vref = Vrefold - deltaVref;
+		}
+		else
+		{
+			Vref = Vrefold + deltaVref;
+		}
+	}
+	if (Vref >= Vrefmax || Vref <= Vrefmin)
+	{
+		Vref = Vrefold;
+	}
+	Vrefold = Vref;
+	Vold = V;
+	Pold = P;
+  }
+}
+\end{lstlisting}
+
+
+
+\section{Code for Glowing LED for an infinite period.}
+\begin{lstlisting}[language=C++]
+#include "stm32f4xx.h"             /*Inculde STM inbuilt library*/
+#include "stm32f4_discovery.h"
+
+GPIO_InitTypeDef GPIO_LED;           /* Initializing the function */
+
+int main(void)   /* Begining the main function */
+{
+
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);       /* Initializing and starting the clock of Port D */
+
+  GPIO_LED.GPIO_Pin = GPIO_Pin_12;          /* Initializing the Pin 12 */
+  GPIO_LED.GPIO_Mode = GPIO_Mode_OUT;       /* Initializing the Pin 12 in output mode */
+  GPIO_LED.GPIO_OType = GPIO_OType_PP;      /* Initializing the Pin 12 with Push Pull mode */
+  GPIO_LED.GPIO_Speed = GPIO_Speed_50MHz;   /* Initializing the port D with the clock speed */
+
+  GPIO_Init(GPIOD, &GPIO_LED);             /* Calling the function Init by passing two values */
+
+  GPIO_WriteBit(GPIOD, GPIO_Pin_12, Bit_SET);  /* Making pin PD12 set high by passing Bit_SET value  */
+
+  while (1)     /* Starting While Loop for controller to work for infinite Period */
+  {
+
+  }
+}
+
+\end{lstlisting}
+
+
+\section{Code for making LEDs blink automatically}
+\begin{lstlisting}[language=C++]
+#include "stm32f4xx.h"             /* Include STM inbuilt Library */
+#include "stm32f4_discovery.h"
+
+GPIO_InitTypeDef GPIO_LED;        /* Initializing  the  function  */
+
+void Delay( __IO uint32_t nCount)   /* Function for bringing the delay */
+{
+	while(nCount--)                /* starting loop for delay */
+	{
+		
+	}
+}
+
+int main(void)                   /* Beginning the main function */
+{
+  
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);    /* Initializing the clock for PortD and enabling it */
+  GPIO_LED.GPIO_Pin = GPIO_Pin_12;                         /* Initializing the Pin 12 pf port D*/
+  GPIO_LED.GPIO_Mode = GPIO_Mode_OUT;                      /* Initializing the Pin PD12 to work in output Mode */
+  GPIO_LED.GPIO_OType = GPIO_OType_PP;                     /* Initializing the Pin PD12 to work Push PUll Mode */
+  GPIO_LED.GPIO_Speed = GPIO_Speed_50MHz;                  /* Initializing the speed */
+  GPIO_Init(GPIOD, &GPIO_LED);                             /* Calling the function Init By passing two values */
+
+  while (1)                       /* Stating while loop*/
+  {
+	  GPIO_WriteBit(GPIOD, GPIO_Pin_12, Bit_SET);    /* Making Pin PD12 output as high*/
+	  Delay(168000);                                 /* Providing a delay */
+	  GPIO_WriteBit(GPIOD, GPIO_Pin_12, Bit_RESET);  /* Making Pin PD12 output as low */
+      Delay(168000);                                 /* Providing delay */
+  }
+}
+
+\end{lstlisting}
+
+\section{Code for making all four LEDs glow one after the other}
+\begin{lstlisting}[language=C++]
+#include "stm32f4xx.h"                        /* Include STM Inbuilt Library*/
+#include "stm32f4_discovery.h"
+
+GPIO_InitTypeDef GPIO_Led;                    /* Initializing the function */
+
+void Delay( __IO uint32_t nCount)             /* Function for providing delay */
+{
+	while(nCount--)                           /* This while loop gives delay */
+	{
+		
+	}
+}
+
+int main(void)                         /* Beginning the main function */
+{
+
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);        /* Initializing the Clock for port D and enabling it */
+    GPIO_Led.GPIO_Pin = GPIO_Pin_0;                            /* Initializing the Pin PD0  */
+    GPIO_Led.GPIO_Pin = GPIO_Pin_1;                            /* Initializing the Pin PD1 */
+    GPIO_Led.GPIO_Pin = GPIO_Pin_2;                            /* Initializing the Pin PD2 */
+    GPIO_Led.GPIO_Pin = GPIO_Pin_3;                             /* Initializing the Pin PD3 */
+    GPIO_Led.GPIO_Mode = GPIO_Mode_OUT;                        /* Initializing the Pin PD0, PD1, PD2, PD3 to work in output Mode */
+    GPIO_Led.GPIO_OType = GPIO_OType_PP;                      /* Initializing the Pin PD0, PD1, PD2, PD3 to work in Push Pull Mode */
+    GPIO_Led.GPIO_Speed = GPIO_Speed_50MHz;                /* Initializing the spped of clock pulse */
+
+    GPIO_Init(GPIOD, &GPIO_Led);                /* Calling the function Init by passing two values */
+
+
+  while (1)                                     /* Starting While Loop */
+  {
+	  GPIO_WriteBit(GPIOD, GPIO_Pin_0, Bit_SET);    /* Making Pin PD0 to output as high*/
+	  Delay(168000);                                  /* Providing The dealy */
+	  GPIO_WriteBit(GPIOD, GPIO_Pin_1, Bit_SET);     /** Making Pin PD1 to ouput high and PD0 to output as low */
+	  GPIO_WriteBit(GPIOD, GPIO_Pin_0, Bit_RESET);
+	  Delay(168000);                                   /* Providing a delay */
+	  GPIO_WriteBit(GPIOD, GPIO_Pin_2, Bit_SET);     /** Making Pin PD2 to ouput high and PD1 to output as low */
+	  GPIO_WriteBit(GPIOD, GPIO_Pin_1, Bit_RESET);
+	  Delay(168000);                                    /* Providing a delay */
+	  GPIO_WriteBit(GPIOD, GPIO_Pin_3, Bit_SET);         /** Making Pin PD3 to ouput high and PD2 to output as low */
+	  GPIO_WriteBit(GPIOD, GPIO_Pin_2, Bit_RESET);
+	  Delay(168000);                        /* Providing a delay */
+	  GPIO_WriteBit(GPIOD, GPIO_Pin_3, Bit_RESET);            /** Making Pin PD3 to ouput low */
+	  
+  }
+}
+
+\end{lstlisting}
+
+\section{Code for Making LED switch on/off by pressing switch.}
+\begin{lstlisting}[language=C++]
+#include "stm32f4xx.h"                           /* Include STM Inbuilt Library*/
+#include "stm32f4_discovery.h"
+
+GPIO_InitTypeDef GPIO_Led;                   /* Initaializing the function */
+
+int p = 0;                             /* initializing the variable p */
+
+void Delay( __IO uint32_t nCount)     /* Function to provide delay */
+{
+	while(nCount--)                         /* loop to bring delay */
+	{
+		
+	}
+}
+
+int main(void)                         /* Starting The main function */
+{
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);     /* Initializing the clock for portD and enabling it */
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);     /* Initializing the clock for portD and enabling it */
+	
+  GPIO_Led.GPIO_Pin = GPIO_Pin_0;                 /* Initializing the Pin PD0 */
+  GPIO_Led.GPIO_Pin = GPIO_Pin_1;                 /* Initializing the Pin PD1 */
+  GPIO_Led.GPIO_Pin = GPIO_Pin_2;                 /* Initializing the Pin PD2 */
+  GPIO_Led.GPIO_Pin = GPIO_Pin_3;                 /* Initializing the Pin PD3 */
+  GPIO_Led.GPIO_Mode = GPIO_Mode_OUT;             /* Initializing the Pin PD0, PD1, PD2, PD3 to work in output mode */
+  GPIO_Led.GPIO_OType = GPIO_OType_PP;            /* Initializing the Pin PD0, PD1, PD2, PD3 to work in Push Pull Mode */
+  GPIO_Led.GPIO_Speed = GPIO_Speed_50MHz;        /* Initializing spped of clock pulse */
+  GPIO_Led.GPIO_PuPd = GPIO_PuPd_NOPULL;         /* Initailaizing the pin to work as No pull mode */
+  GPIO_Init(GPIOD, &GPIO_Led);                   /* calling the function Init by passing two values */
+  
+  GPIO_Led.GPIO_Pin = GPIO_Pin_1;                 /* Initializing the Pin PA1 */
+  GPIO_Led.GPIO_Mode = GPIO_Mode_IN;              /* Initializing the Pin PA1 to work as Input mode */
+  GPIO_Led.GPIO_OType = GPIO_OType_PP;            /* Initaializing pin to work as Push pull mode */
+  GPIO_Led.GPIO_PuPd = GPIO_PuPd_DOWN;            /* Pin set low */
+  GPIO_Led.GPIO_Speed = GPIO_Speed_50MHz;         /* Initaializing the spped of clock pulse */
+  GPIO_Init(GPIOA, &GPIO_Led);                  /* Calling the function Init by passing two values */
+  
+  while (1)
+  {
+	  if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1) == Bit_SET)   /* Checking if Input is High or not */
+	  {
+		  if(p == 0)                                              /* Checking value of p */
+		  {
+			  p = 1;                                              /* Changing value of p if condition is true */
+		  }
+		  else
+		  {
+			  p = 0;                                           /* p remains same if condition true */
+		  }
+		  Delay(168000);                                        /* Provide Delay */
+	  }
+	if (p == 0)                                             /* Checking condition by seeing value of p */
+	{
+		GPIO_WriteBit(GPIOD, GPIO_Pin_0, Bit_SET);         /* Making pin PD0 to set high */
+		GPIO_WriteBit(GPIOD, GPIO_Pin_1, Bit_SET);          /* Making pin PD1 to set high */
+		GPIO_WriteBit(GPIOD, GPIO_Pin_2, Bit_RESET);        /* Making pin PD2 to set low */
+		GPIO_WriteBit(GPIOD, GPIO_Pin_3, Bit_RESET);        /* Making pin PD3 to set low */
+	}
+	else
+	{
+		GPIO_WriteBit(GPIOD, GPIO_Pin_0, Bit_RESET);         /* Making pin PD0 to set low */
+		GPIO_WriteBit(GPIOD, GPIO_Pin_1, Bit_RESET);         /* Making pin PD1 to set low */
+		GPIO_WriteBit(GPIOD, GPIO_Pin_2, Bit_SET);           /* Making pin PD2 to set high */
+		GPIO_WriteBit(GPIOD, GPIO_Pin_3, Bit_SET);           /* Making pin PD3 to set high */
+	}
+  }
+  
+}
+
+\end{lstlisting}

@@ -1,0 +1,564 @@
+
+Code generated using Embedded coder in MATLAB for PLL to be used in STM32F4 Discovery board.
+
+\section{MATLAB Function block code}
+\subsection{Step variation of freqeucy, phase and Amplitude}
+
+\begin{lstlisting} [language = python, caption = Step variation of frequency ]
+
+ function y = fcn(CLK, Ip1,Ip2)
+     if CLK == 0
+        y = Ip1;
+     else
+         y = Ip2;
+     end
+ end
+
+\end{lstlisting}
+
+\section{Model Files}
+
+\subsubsection{1) Model.c}
+\begin{lstlisting}[language=C,caption=Model.c]
+
+
+/*
+ * File: Model.c
+ *
+ * Code generated for Simulink model :Final_PLL_Single_Phase.
+ *
+ * Model version      : 1.8
+ * Simulink Coder version    : 9.3 (R2020a) 18-Nov-2019
+ * TLC version       : 9.3 (Jan 23 2020)
+ * C/C++ source code generated on  : Fri May 28 20:30:58 2021
+ *
+ * Target selection: stm32.tlc
+ * Embedded hardware selection: STM32CortexM
+ * Code generation objectives:
+ *    1. Execution efficiency
+ *    2. RAM efficiency
+ * Validation result: Not run
+ *
+ *
+ *
+ * ******************************************************************************
+******************************************************************************
+ */
+
+#include "Final_PLL_Single_Phase.h"
+
+/* Private macros used by the generated code to access rtModel */
+#ifndef rtmIsMajorTimeStep
+# define rtmIsMajorTimeStep(rtm)       (((rtm)->Timing.simTimeStep) == MAJOR_TIME_STEP)
+#endif
+
+#ifndef rtmIsMinorTimeStep
+# define rtmIsMinorTimeStep(rtm)       (((rtm)->Timing.simTimeStep) == MINOR_TIME_STEP)
+#endif
+
+#ifndef rtmSetTPtr
+# define rtmSetTPtr(rtm, val)          ((rtm)->Timing.t = (val))
+#endif
+
+/* Continuous states */
+X rtX;
+
+/* Block signals and states (default storage) */
+DW rtDW;
+
+/* Real-time model */
+RT_MODEL rtM_;
+RT_MODEL *const rtM = &rtM_;
+
+/* private model entry point functions */
+extern void Final_PLL_Single_Phase_derivatives(void);
+
+/*
+ * This function updates continuous states using the ODE3 fixed-step
+ * solver algorithm
+ */
+static void rt_ertODEUpdateContinuousStates(RTWSolverInfo *si )
+{
+  /* Solver Matrices */
+  static const real_T rt_ODE3_A[3] = {
+    1.0/2.0, 3.0/4.0, 1.0
+  };
+
+  static const real_T rt_ODE3_B[3][3] = {
+    { 1.0/2.0, 0.0, 0.0 },
+
+    { 0.0, 3.0/4.0, 0.0 },
+
+    { 2.0/9.0, 1.0/3.0, 4.0/9.0 }
+  };
+
+  time_T t = rtsiGetT(si);
+  time_T tnew = rtsiGetSolverStopTime(si);
+  time_T h = rtsiGetStepSize(si);
+  real_T *x = rtsiGetContStates(si);
+  ODE3_IntgData *id = (ODE3_IntgData *)rtsiGetSolverData(si);
+  real_T *y = id->y;
+  real_T *f0 = id->f[0];
+  real_T *f1 = id->f[1];
+  real_T *f2 = id->f[2];
+  real_T hB[3];
+  int_T i;
+  int_T nXc = 4;
+  rtsiSetSimTimeStep(si,MINOR_TIME_STEP);
+
+  /* Save the state values at time t in y, we'll use x as ynew. */
+  (void) memcpy(y, x,
+                (uint_T)nXc*sizeof(real_T));
+
+  /* Assumes that rtsiSetT and ModelOutputs are up-to-date */
+  /* f0 = f(t,y) */
+  rtsiSetdX(si, f0);
+  Final_PLL_Single_Phase_derivatives();
+
+  /* f(:,2) = feval(odefile, t + hA(1), y + f*hB(:,1), args(:)(*)); */
+  hB[0] = h * rt_ODE3_B[0][0];
+  for (i = 0; i < nXc; i++) {
+    x[i] = y[i] + (f0[i]*hB[0]);
+  }
+
+  rtsiSetT(si, t + h*rt_ODE3_A[0]);
+  rtsiSetdX(si, f1);
+  Final_PLL_Single_Phase_step();
+  Final_PLL_Single_Phase_derivatives();
+
+  /* f(:,3) = feval(odefile, t + hA(2), y + f*hB(:,2), args(:)(*)); */
+  for (i = 0; i <= 1; i++) {
+    hB[i] = h * rt_ODE3_B[1][i];
+  }
+
+  for (i = 0; i < nXc; i++) {
+    x[i] = y[i] + (f0[i]*hB[0] + f1[i]*hB[1]);
+  }
+
+  rtsiSetT(si, t + h*rt_ODE3_A[1]);
+  rtsiSetdX(si, f2);
+  Final_PLL_Single_Phase_step();
+  Final_PLL_Single_Phase_derivatives();
+
+  /* tnew = t + hA(3);
+     ynew = y + f*hB(:,3); */
+  for (i = 0; i <= 2; i++) {
+    hB[i] = h * rt_ODE3_B[2][i];
+  }
+
+  for (i = 0; i < nXc; i++) {
+    x[i] = y[i] + (f0[i]*hB[0] + f1[i]*hB[1] + f2[i]*hB[2]);
+  }
+
+  rtsiSetT(si, tnew);
+  rtsiSetSimTimeStep(si,MAJOR_TIME_STEP);
+}
+
+/* Model step function */
+void Final_PLL_Single_Phase_step(void)
+{
+  real_T rtb_Integrator1;
+  real_T rtb_Sum1_g;
+  real_T rtb_Gain;
+  if (rtmIsMajorTimeStep(rtM)) {
+    /* set solver stop time */
+    rtsiSetSolverStopTime(&rtM->solverInfo,((rtM->Timing.clockTick0+1)*
+      rtM->Timing.stepSize0));
+  }                                    /* end MajorTimeStep */
+
+  /* Update absolute time of base rate at minor time step */
+  if (rtmIsMinorTimeStep(rtM)) {
+    rtM->Timing.t[0] = rtsiGetT(&rtM->solverInfo);
+  }
+
+  /* Integrator: '<Root>/Integrator1' */
+  rtb_Integrator1 = rtX.Integrator1_CSTATE;
+
+  /* Fcn: '<Root>/Fcn' incorporates:
+   *  Integrator: '<Root>/Integrator1'
+   */
+  rtDW.Fcn = sin(rtX.Integrator1_CSTATE);
+
+  /* Outputs for Enabled SubSystem: '<S1>/Subsystem - pi//2 delay' incorporates:
+   *  EnablePort: '<S8>/Enable'
+   */
+  if (rtmIsMajorTimeStep(rtM)) {
+    /* S-Function (GPIO_Write): '<Root>/GPIO_Write' */
+    {
+      if (rtDW.Fcn == 0)
+        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
+      else
+        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET);
+    }
+
+    /* S-Function (GPIO_Read): '<Root>/GPIO_Read' */
+    {
+      rtDW.GPIO_Read = (boolean_T)HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_2);
+    }
+
+    rtDW.Subsystempi2delay_MODE = (rtmIsMajorTimeStep(rtM) ||
+      rtDW.Subsystempi2delay_MODE);
+  }
+
+  /* End of Outputs for SubSystem: '<S1>/Subsystem - pi//2 delay' */
+
+  /* Sum: '<S10>/Sum1' incorporates:
+   *  Gain: '<S10>/D'
+   *  Integrator: '<S10>/Integrator'
+   */
+  rtb_Sum1_g = 0.0 * rtDW.GPIO_Read + rtX.Integrator_CSTATE_d;
+
+  /* Gain: '<Root>/Gain' incorporates:
+   *  Gain: '<S11>/D'
+   *  Integrator: '<S11>/Integrator'
+   *  Sum: '<S11>/Sum1'
+   */
+  rtb_Gain = (0.0 * rtb_Sum1_g + rtX.Integrator_CSTATE) * 2.0;
+
+  /* Outputs for Enabled SubSystem: '<S1>/Subsystem - pi//2 delay' incorporates:
+
+
+\end{lstlisting}
+
+\subsubsection{2) Model.h}
+\begin{lstlisting}[language=C,caption=Model.c]
+
+/*
+ * File: Model.h
+ *
+ * Code generated for Simulink model :Final_PLL_Single_Phase.
+ *
+ * Model version      : 1.8
+ * Simulink Coder version    : 9.3 (R2020a) 18-Nov-2019
+ * TLC version       : 9.3 (Jan 23 2020)
+ * C/C++ source code generated on  : Fri May 28 20:30:58 2021
+ *
+ * Target selection: stm32.tlc
+ * Embedded hardware selection: STM32CortexM
+ * Code generation objectives:
+ *    1. Execution efficiency
+ *    2. RAM efficiency
+ * Validation result: Not run
+ *
+ *
+ *
+ * ******************************************************************************
+ */
+
+#ifndef RTW_HEADER_Final_PLL_Single_Phase_h_
+#define RTW_HEADER_Final_PLL_Single_Phase_h_
+#include <math.h>
+#include <string.h>
+#include "STM32_Config.h"
+#include "Final_PLL_Single_Phase_External_Functions.h"
+#ifndef Final_PLL_Single_Phase_COMMON_INCLUDES_
+# define Final_PLL_Single_Phase_COMMON_INCLUDES_
+#include "rtwtypes.h"
+#include "rtw_continuous.h"
+#include "rtw_solver.h"
+#endif                             /* Final_PLL_Single_Phase_COMMON_INCLUDES_ */
+
+/* Model Code Variants */
+
+/* Macros for accessing real-time model data structure */
+#ifndef rtmGetContStateDisabled
+# define rtmGetContStateDisabled(rtm)  ((rtm)->contStateDisabled)
+#endif
+
+#ifndef rtmSetContStateDisabled
+# define rtmSetContStateDisabled(rtm, val) ((rtm)->contStateDisabled = (val))
+#endif
+
+#ifndef rtmGetContStates
+# define rtmGetContStates(rtm)         ((rtm)->contStates)
+#endif
+
+#ifndef rtmSetContStates
+# define rtmSetContStates(rtm, val)    ((rtm)->contStates = (val))
+#endif
+
+#ifndef rtmGetContTimeOutputInconsistentWithStateAtMajorStepFlag
+# define rtmGetContTimeOutputInconsistentWithStateAtMajorStepFlag(rtm) ((rtm)->CTOutputIncnstWithState)
+#endif
+
+#ifndef rtmSetContTimeOutputInconsistentWithStateAtMajorStepFlag
+
+\end{lstlisting}
+
+\newpage
+
+\section{Utility Files}
+\subsubsection{1. rtwtypes.h}
+\begin{lstlisting}[language=C,caption=Model.c]
+
+
+/*
+ * File: rtwtypes.h
+ *
+ * Code generated for Simulink model :Final_PLL_Single_Phase.
+ *
+ * Model version      : 1.8
+ * Simulink Coder version    : 9.3 (R2020a) 18-Nov-2019
+ * TLC version       : 9.3 (Jan 23 2020)
+ * C/C++ source code generated on  : Fri May 28 20:30:58 2021
+ *
+ * Target selection: stm32.tlc
+ * Embedded hardware selection: STM32CortexM
+ * Code generation objectives:
+ *    1. Execution efficiency
+ *    2. RAM efficiency
+ * Validation result: Not run
+ *
+ *
+ *
+ * ******************************************************************************
+ */
+
+#ifndef RTWTYPES_H
+#define RTWTYPES_H
+
+/* Logical type definitions */
+#if (!defined(__cplusplus))
+#  ifndef false
+#   define false                       (0U)
+#  endif
+
+#  ifndef true
+#   define true                        (1U)
+#  endif
+#endif
+
+/*=======================================================================*
+ * Target hardware information
+ *   Device type: MATLAB Host
+ *   Number of bits:     char:   8    short:   16    int:  32
+ *                       long:  32    long long:  64
+ *                       native word size:  64
+ *   Byte ordering: LittleEndian
+ *   Signed integer division rounds to: Zero
+ *   Shift right on a signed integer as arithmetic shift: on
+ *=======================================================================*/
+
+/*=======================================================================*
+ * Fixed width word size data types:                                     *
+ *   int8_T, int16_T, int32_T     - signed 8, 16, or 32 bit integers     *
+ *   uint8_T, uint16_T, uint32_T  - unsigned 8, 16, or 32 bit integers   *
+ *   real32_T, real64_T           - 32 and 64 bit floating point numbers *
+ *=======================================================================*/
+typedef signed char int8_T;
+typedef unsigned char uint8_T;
+typedef short int16_T;
+typedef unsigned short uint16_T;
+typedef int int32_T;
+typedef unsigned int uint32_T;
+
+
+\end{lstlisting}
+
+\newpage
+
+\section{Other Files}
+\subsubsection{1. External Functions.h}
+\begin{lstlisting}[language=C,caption=Model.c]
+
+/*
+ * File: Model_External_Functions.h
+ *
+ * Code generated for Simulink model :Final_PLL_Single_Phase.
+ *
+ * Model version      : 1.8
+ * Simulink Coder version    : 9.3 (R2020a) 18-Nov-2019
+ * TLC version       : 9.3 (Jan 23 2020)
+ * C/C++ source code generated on  : Fri May 28 20:30:58 2021
+ *
+ * Target selection: stm32.tlc
+ * Embedded hardware selection: STM32CortexM
+ * Code generation objectives:
+ *    1. Execution efficiency
+ *    2. RAM efficiency
+ * Validation result: Not run
+ *
+ *
+ *
+ * ******************************************************************************
+ */
+
+#ifndef RTW_HEADER_Final_PLL_Single_Phase_External_Functions_h_
+#define RTW_HEADER_Final_PLL_Single_Phase_External_Functions_h_
+
+/* Generated by STM32_Config.*/
+/***** External Imported Functions *****/
+#endif             /* RTW_HEADER_Final_PLL_Single_Phase_External_Functions_h_ */
+
+/* File trailer for Real-Time Workshop generated code.
+ *
+ * [EOF] Final_PLL_Single_Phase_External_Functions.h
+ */
+
+
+\end{lstlisting}
+
+\subsubsection{2. Main.c}
+\begin{lstlisting}[language=C,caption=Model.c]
+
+/*
+ * File: main.c
+ *
+ * Code generated for Simulink model :Final_PLL_Single_Phase.
+ *
+ * Model version      : 1.8
+ * Simulink Coder version    : 9.3 (R2020a) 18-Nov-2019
+ * TLC version       : 9.3 (Jan 23 2020)
+ * C/C++ source code generated on  : Fri May 28 20:30:58 2021
+ *
+ * Target selection: stm32.tlc
+ * Embedded hardware selection: STM32CortexM
+ * Code generation objectives:
+ *    1. Execution efficiency
+ *    2. RAM efficiency
+ * Validation result: Not run
+ *
+ *
+ *
+ * ******************************************************************************
+ */
+
+/* This section of code is going to be merged by the STM32CubeMX tool. */
+/* USER CODE BEGIN 0 */
+#include <stdio.h>
+#include "Final_PLL_Single_Phase.h"
+#include "rtwtypes.h"
+
+/* Flags for taskOverrun */
+static boolean_T OverrunFlags[1] = { false, };
+
+/* Number of auto reload timer rotation computed */
+static volatile uint32_t autoReloadTimerLoopVal_S = 1;
+
+/* Remaining number of auto reload timer rotation to do */
+volatile uint32_t remainAutoReloadTimerLoopVal_S = 1;
+
+/* USER CODE END 0 */
+
+/**
+ * @brief  The application entry point.
+ * @retval int
+ */
+int main (void)
+{
+  /* This section of code is going to be merged by the STM32CubeMX tool. */
+  /* USER CODE BEGIN 1 */
+  /* USER CODE END 1 */
+
+  /* This section of code is going to be merged by the STM32CubeMX tool. */
+  /* USER CODE BEGIN 2 */
+  /* Use Systick arm timer and interrupt to tick step() functions of the Simulink model. */
+  /* Fundamental sample time is set to: '0.001' s */
+  if (SysTick_Config((uint32_t)(SystemCoreClock/1000.0))) {
+    autoReloadTimerLoopVal_S = 1;
+    do {
+      autoReloadTimerLoopVal_S++;
+    } while ((uint32_t)(SystemCoreClock/1000.0)/autoReloadTimerLoopVal_S >
+             SysTick_LOAD_RELOAD_Msk);
+
+\end{lstlisting}
+
+\subsubsection{3. STM32 config.h}
+
+\begin{lstlisting}[language=C,caption=Model.c]
+
+/*
+ * File: STM32_Config.h
+ *
+ * Code generated for Simulink model :Final_PLL_Single_Phase.
+ *
+ * Model version      : 1.8
+ * Simulink Coder version    : 9.3 (R2020a) 18-Nov-2019
+ * TLC version       : 9.3 (Jan 23 2020)
+ * C/C++ source code generated on  : Fri May 28 20:30:58 2021
+ *
+ * Target selection: stm32.tlc
+ * Embedded hardware selection: STM32CortexM
+ * Code generation objectives:
+ *    1. Execution efficiency
+ *    2. RAM efficiency
+ * Validation result: Not run
+ *
+ *
+ *
+ * ******************************************************************************
+ */
+
+#ifndef RTW_HEADER_STM32_Config_h_
+#define RTW_HEADER_STM32_Config_h_
+#include "stm32f4xx.h"
+#include "stm32f4xx_hal.h"
+
+/* For Error_Handler() declaration. */
+#include "main.h"
+#include "rtwtypes.h"
+#endif                                 /* RTW_HEADER_STM32_Config_h_ */
+
+/* File trailer for Real-Time Workshop generated code.
+ *
+ * [EOF] STM32_Config.h
+ */
+
+
+\end{lstlisting}
+
+\subsubsection{4 stm32xxxx-it.c}
+\begin{lstlisting}[language=C,caption=Model.c]
+
+/*
+ * File: stm32xxxx_it.c
+ *
+ * Code generated for Simulink model :Final_PLL_Single_Phase.
+ *
+ * Model version      : 1.8
+ * Simulink Coder version    : 9.3 (R2020a) 18-Nov-2019
+ * TLC version       : 9.3 (Jan 23 2020)
+ * C/C++ source code generated on  : Fri May 28 20:30:58 2021
+ *
+ * Target selection: stm32.tlc
+ * Embedded hardware selection: STM32CortexM
+ * Code generation objectives:
+ *    1. Execution efficiency
+ *    2. RAM efficiency
+ * Validation result: Not run
+ *
+ *
+ *
+ * ******************************************************************************
+ */
+
+/**
+ * @brief This function handles System tick timer.
+ */
+void SysTick_Handler(void)
+{
+  /* This section of code is going to be merged by the STM32CubeMX tool. */
+  /* USER CODE BEGIN SysTick_IRQn 0 */
+  {
+    extern volatile uint32_t remainAutoReloadTimerLoopVal_S;
+
+    /* Manage number of loop before interrupt has to be processed. */
+    if (remainAutoReloadTimerLoopVal_S) {
+      remainAutoReloadTimerLoopVal_S--;
+    }
+  }
+
+  /* USER CODE END SysTick_IRQn 0 */
+
+  /* USER CODE BEGIN SysTick_IRQn 1 */
+
+  /* USER CODE END SysTick_IRQn 1 */
+}
+
+/* File trailer for Real-Time Workshop generated code.
+ *
+ * [EOF] stm32xxxx_it.c
+ */
+
+
+\end{lstlisting}
